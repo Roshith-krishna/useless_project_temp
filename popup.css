@@ -289,6 +289,61 @@ header {
   display: none !important;
 }
 
+.btn-autopsy {
+  width: 100%;
+  background: linear-gradient(135deg, #ff2a55 0%, #ff7700 50%, #9d4edd 100%);
+  color: #fff;
+  border: none;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(255, 42, 85, 0.4);
+  transition: transform 0.15s, box-shadow 0.15s;
+  text-align: center;
+}
+
+.btn-autopsy:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(255, 42, 85, 0.6);
+}
+
+.api-settings-drawer {
+  font-size: 11px;
+  color: var(--text-muted);
+  border-top: 1px solid var(--card-border);
+  padding-top: 8px;
+}
+
+.api-settings-drawer summary {
+  cursor: pointer;
+  user-select: none;
+  font-weight: 600;
+}
+
+.api-drawer-content {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.api-drawer-content input {
+  background: #090a0f;
+  border: 1px solid var(--card-border);
+  color: var(--text-main);
+  padding: 6px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+}
+
+.api-key-status {
+  font-size: 10px;
+  color: var(--status-green);
+}
+
 footer {
   font-size: 11px;
   color: var(--text-muted);

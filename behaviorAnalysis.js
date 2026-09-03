@@ -135,7 +135,9 @@ function analyzeSessionBehavior(session) {
       isInstantSkip: isInstantSkip,
       isNearComplete: isNearComplete,
       isRevisit: isRevisit,
-      stintIndex: stintInfo.stintIndex
+      stintIndex: stintInfo.stintIndex,
+      content: ev.content || null,
+      semantics: ev.semantics || null
     };
   });
 

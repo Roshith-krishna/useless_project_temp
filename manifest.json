@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Scrollopsy",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Observes your YouTube Shorts scrolling session and creates an entertaining autopsy of your attention.",
   "icons": {
     "16": "icons/icon16.png",
@@ -26,8 +26,20 @@
   "content_scripts": [
     {
       "matches": ["https://www.youtube.com/*"],
-      "js": ["behaviorAnalysis.js", "content.js"],
+      "js": [
+        "contentExtractor.js",
+        "semanticEngine.js",
+        "behaviorAnalysis.js",
+        "patternDetector.js",
+        "content.js"
+      ],
       "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["report.html", "report.css", "report.js", "contentTrail.js", "behaviorAnalysis.js", "patternDetector.js", "semanticEngine.js"],
+      "matches": ["https://www.youtube.com/*"]
     }
   ]
 }

@@ -108,6 +108,38 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
+  // Open Doomscroll Autopsy full-page report
+  const openAutopsyBtn = document.getElementById("open-autopsy-btn");
+  if (openAutopsyBtn) {
+    openAutopsyBtn.addEventListener("click", () => {
+      chrome.tabs.create({ url: chrome.runtime.getURL("report.html") });
+    });
+  }
+
+  // API Key Settings Drawer
+  const apiKeyInput = document.getElementById("gemini-key-input");
+  const saveApiKeyBtn = document.getElementById("save-api-key-btn");
+  const apiKeyStatus = document.getElementById("api-key-status");
+
+  if (apiKeyInput && saveApiKeyBtn) {
+    chrome.storage.local.get(["geminiApiKey"], (res) => {
+      if (res.geminiApiKey) {
+        apiKeyInput.value = res.geminiApiKey;
+        if (apiKeyStatus) apiKeyStatus.textContent = "✓ Key loaded";
+      }
+    });
+
+    saveApiKeyBtn.addEventListener("click", () => {
+      const key = apiKeyInput.value.trim();
+      chrome.storage.local.set({ geminiApiKey: key }, () => {
+        if (apiKeyStatus) {
+          apiKeyStatus.textContent = key ? "✓ Key saved successfully!" : "Using offline local NLP";
+          setTimeout(() => { apiKeyStatus.textContent = ""; }, 3000);
+        }
+      });
+    });
+  }
+
   // Listen for real-time storage changes while popup is open
   chrome.storage.onChanged.addListener((changes, areaName) => {
     if (areaName === "local" && changes.currentSession) {

@@ -36,6 +36,7 @@ let isOnShortsPage = false;
 
 // Active Viewing Event State
 let currentTiming = null;
+let activeContentCollector = null;
 
 // In-memory active session (Single Source of Truth to eliminate storage race conditions)
 let activeSession = null;
@@ -198,9 +199,16 @@ function persistSession(callback) {
   // Ensure backward compatibility alias
   activeSession.shorts = activeSession.views;
 
-  // Derive behavioral analysis layer
+  // Derive behavioral analysis and pattern detection layers
   if (typeof analyzeSessionBehavior === "function") {
-    activeSession.behaviorAnalysis = analyzeSessionBehavior(activeSession);
+    const behavior = analyzeSessionBehavior(activeSession);
+    if (typeof aggregateTopicEngagement === "function") {
+      behavior.topicEngagement = aggregateTopicEngagement(activeSession.views);
+      if (typeof detectScrollingPatterns === "function") {
+        behavior.patterns = detectScrollingPatterns(activeSession.views, behavior.topicEngagement);
+      }
+    }
+    activeSession.behaviorAnalysis = behavior;
   }
 
   chrome.storage.local.set({ currentSession: activeSession }, () => {
@@ -268,6 +276,20 @@ function closeActiveViewingEvent(reason = "navigation") {
     }
   );
 
+  // Finalize content understanding & semantics
+  let contentData = null;
+  if (activeContentCollector) {
+    contentData = activeContentCollector.finalize();
+    activeContentCollector = null;
+  } else if (typeof extractRenderedShortMetadata === "function") {
+    contentData = extractRenderedShortMetadata(closedVideoId);
+  }
+
+  let semantics = null;
+  if (contentData && typeof analyzeSemanticsLocally === "function") {
+    semantics = analyzeSemanticsLocally(contentData);
+  }
+
   // Synchronously update in-memory activeSession.views to eliminate storage race conditions
   if (activeSession && Array.isArray(activeSession.views)) {
     for (let i = activeSession.views.length - 1; i >= 0; i--) {
@@ -276,9 +298,24 @@ function closeActiveViewingEvent(reason = "navigation") {
         activeSession.views[i].watchDurationMs = watchDurationMs;
         activeSession.views[i].videoDurationMs = videoDurationMs;
         activeSession.views[i].completionRate = completionRate;
+        if (contentData) activeSession.views[i].content = contentData;
+        if (semantics) activeSession.views[i].semantics = semantics;
         break;
       }
     }
+  }
+
+  // Trigger optional async AI / cached semantic enrichment
+  if (contentData && typeof getOrComputeSemanticFingerprint === "function") {
+    getOrComputeSemanticFingerprint(contentData).then((fp) => {
+      if (fp && activeSession && Array.isArray(activeSession.views)) {
+        const ev = activeSession.views.find((v) => v.id === viewId);
+        if (ev && fp.source !== "local-nlp") {
+          ev.semantics = fp;
+          persistSession();
+        }
+      }
+    }).catch(() => {});
   }
 
   const closedData = {
@@ -288,7 +325,9 @@ function closeActiveViewingEvent(reason = "navigation") {
     endedAt: endedAt,
     watchDurationMs: watchDurationMs,
     videoDurationMs: videoDurationMs,
-    completionRate: completionRate
+    completionRate: completionRate,
+    content: contentData,
+    semantics: semantics
   };
 
   currentTiming = null;
@@ -304,6 +343,11 @@ function startNewViewingEvent(videoId, url, triggerReason = "navigation") {
     let closedPreviousEvent = null;
     if (currentTiming) {
       closedPreviousEvent = closeActiveViewingEvent("switched_to_new_short");
+    }
+
+    // Initialize content collector for this new viewing event
+    if (typeof ViewingContentCollector === "function") {
+      activeContentCollector = new ViewingContentCollector(videoId);
     }
 
     const startTimeMs = Date.now();
@@ -322,6 +366,13 @@ function startNewViewingEvent(videoId, url, triggerReason = "navigation") {
       videoDurationMs: videoDurationMs
     };
 
+    const initialContent = typeof extractRenderedShortMetadata === "function"
+      ? extractRenderedShortMetadata(videoId)
+      : null;
+    const initialSemantics = initialContent && typeof analyzeSemanticsLocally === "function"
+      ? analyzeSemanticsLocally(initialContent)
+      : null;
+
     const newViewEvent = {
       id: viewId,
       videoId: videoId,
@@ -331,7 +382,9 @@ function startNewViewingEvent(videoId, url, triggerReason = "navigation") {
       endedAt: null,
       watchDurationMs: null,
       videoDurationMs: videoDurationMs,
-      completionRate: null
+      completionRate: null,
+      content: initialContent,
+      semantics: initialSemantics
     };
 
     logScrollopsy(

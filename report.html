@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scrollopsy &bull; Doomscroll Autopsy Report</title>
+  <link rel="stylesheet" href="report.css">
+</head>
+<body>
+  <div class="autopsy-container">
+    <!-- Header / Case Stamp -->
+    <header class="autopsy-header">
+      <div class="case-file-badge">
+        <span class="stamp-pill">CASE FILE #<span id="case-id">OBS-0000</span></span>
+        <span class="classified-stamp">AUTOPSY VERIFIED</span>
+      </div>
+
+      <div class="header-main">
+        <div class="title-group">
+          <h1 class="glitch-title">SCROLLOPSY</h1>
+          <p class="subtitle">DOOMSCROLL AUTOPSY &bull; POST-MORTEM ATTENTION ANALYSIS</p>
+        </div>
+        <div class="header-actions">
+          <button id="refresh-report-btn" class="btn-primary">🔄 Recalculate</button>
+          <button id="close-report-btn" class="btn-secondary">Close Dossier</button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Vital Stats Grid -->
+    <section class="vital-stats-grid">
+      <div class="stat-card">
+        <span class="stat-label">SESSION DURATION</span>
+        <span id="stat-duration" class="stat-val">0m 0s</span>
+        <span class="stat-sub">Elapsed time in Shorts</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">SHORTS CONSUMED</span>
+        <span id="stat-total-shorts" class="stat-val">0</span>
+        <span class="stat-sub"><span id="stat-unique-shorts">0</span> unique videos</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">OBSESSIVE REVISITS</span>
+        <span id="stat-revisits" class="stat-val highlight-amber">0</span>
+        <span class="stat-sub">Rewatched after leaving</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">TOPICS ENCOUNTERED</span>
+        <span id="stat-topics-count" class="stat-val highlight-cyan">0</span>
+        <span class="stat-sub">Distinct semantic clusters</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">AVG COMPLETION RATE</span>
+        <span id="stat-avg-completion" class="stat-val highlight-green">0%</span>
+        <span class="stat-sub">Mean video retention</span>
+      </div>
+    </section>
+
+    <!-- Phase 11: Content Trail / Train Visualization -->
+    <section class="section-card trail-section">
+      <div class="section-header">
+        <div class="sec-title-wrap">
+          <span class="sec-tag">VISUAL RECONSTRUCTION</span>
+          <h2>THE CONTENT TRAIL</h2>
+        </div>
+        <div class="trail-legend">
+          <span class="leg-item"><span class="leg-dot large"></span> High Engagement</span>
+          <span class="leg-item"><span class="leg-dot small"></span> Instant Skip</span>
+          <span class="leg-item"><span class="leg-line-arc"></span> ↻ Revisit Arc</span>
+        </div>
+      </div>
+      <p class="trail-desc">
+        Chronological trajectory of your attention. Node sizes scale with engagement. Hover any node to inspect video forensic details.
+      </p>
+      
+      <div class="canvas-wrapper">
+        <canvas id="trail-canvas"></canvas>
+        <div id="trail-tooltip" class="trail-tooltip hidden"></div>
+      </div>
+    </section>
+
+    <!-- Autopsy Major Findings Grid -->
+    <div class="findings-grid">
+      <!-- Strongest Engagement -->
+      <section class="section-card">
+        <div class="section-header">
+          <div class="sec-title-wrap">
+            <span class="sec-tag">SIGNAL ANALYSIS</span>
+            <h2>STRONGEST ENGAGEMENT</h2>
+          </div>
+        </div>
+        <p class="section-sub">Topics ranked by transparent behavioral engagement signal (0–100).</p>
+        <div id="strongest-engagement-list" class="engagement-list">
+          <div class="empty-placeholder">Analyzing telemetry...</div>
+        </div>
+      </section>
+
+      <!-- Rabbit Hole & Curiosity Spike -->
+      <div class="col-stack">
+        <!-- Biggest Rabbit Hole -->
+        <section class="section-card highlight-border-red">
+          <div class="section-header">
+            <div class="sec-title-wrap">
+              <span class="sec-tag badge-danger">PRIMARY SINKHOLE</span>
+              <h2>BIGGEST RABBIT HOLE</h2>
+            </div>
+          </div>
+          <div id="rabbit-hole-content" class="highlight-content">
+            <div class="empty-placeholder">No deep rabbit holes detected yet.</div>
+          </div>
+        </section>
+
+        <!-- Curiosity Spike -->
+        <section class="section-card highlight-border-cyan">
+          <div class="section-header">
+            <div class="sec-title-wrap">
+              <span class="sec-tag badge-cyan">INTENSE BRIEF ATTRACTION</span>
+              <h2>CURIOSITY SPIKE</h2>
+            </div>
+          </div>
+          <div id="curiosity-spike-content" class="highlight-content">
+            <div class="empty-placeholder">No sudden curiosity spikes observed.</div>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <!-- Secondary Findings Grid -->
+    <div class="findings-grid">
+      <!-- Most Rewatched -->
+      <section class="section-card">
+        <div class="section-header">
+          <div class="sec-title-wrap">
+            <span class="sec-tag badge-amber">PERSISTENT LOOP</span>
+            <h2>MOST REWATCHED SHORT</h2>
+          </div>
+        </div>
+        <div id="most-rewatched-content" class="highlight-content">
+          <div class="empty-placeholder">No re-encountered videos in this session.</div>
+        </div>
+      </section>
+
+      <!-- Most Aggressively Skipped -->
+      <section class="section-card">
+        <div class="section-header">
+          <div class="sec-title-wrap">
+            <span class="sec-tag badge-muted">IMMEDIATE REJECTION</span>
+            <h2>MOST AGGRESSIVELY SKIPPED</h2>
+          </div>
+        </div>
+        <div id="most-skipped-content" class="highlight-content">
+          <div class="empty-placeholder">No instant skip clusters recorded.</div>
+        </div>
+      </section>
+    </div>
+
+    <!-- Data-Driven Comedic Autopsy Observations -->
+    <section class="section-card observations-section">
+      <div class="section-header">
+        <div class="sec-title-wrap">
+          <span class="sec-tag badge-purple">CORONER SUMMARY</span>
+          <h2>AUTOPSY OBSERVATIONS</h2>
+        </div>
+      </div>
+      <div id="observations-list" class="observations-quotes">
+        <!-- Dynamically injected from measured session telemetry -->
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="autopsy-footer">
+      <p>Scrollopsy Attention Autopsy Engine &bull; Behavioral Signals &bull; Local Browser Data Only</p>
+    </footer>
+  </div>
+
+  <script src="behaviorAnalysis.js"></script>
+  <script src="semanticEngine.js"></script>
+  <script src="patternDetector.js"></script>
+  <script src="contentTrail.js"></script>
+  <script src="report.js"></script>
+</body>
+</html>
