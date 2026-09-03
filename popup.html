@@ -15,7 +15,7 @@
     </div>
     <div class="title-container">
       <h1>Scrollopsy</h1>
-      <span class="version-badge">v0.1.0</span>
+      <span class="version-badge">Stage 4 &bull; Time Tracking</span>
     </div>
   </header>
 
@@ -27,12 +27,37 @@
       </div>
     </div>
     <p class="info-text">
-      Stage 1 Active: YouTube Shorts detection is active on youtube.com/shorts. Check DevTools console to view real-time metadata logs.
+      Observing YouTube Shorts and recording session data into local storage.
     </p>
   </main>
 
+  <section class="debug-card">
+    <div class="debug-header">
+      <h2>Session Inspector (Debug)</h2>
+      <button id="refresh-btn" class="btn-sm" title="Refresh stored session">🔄 Refresh</button>
+    </div>
+
+    <div class="debug-meta">
+      <div class="meta-item">
+        <span class="meta-label">Session ID:</span>
+        <span id="session-id-val" class="meta-val">None (not started)</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Shorts Stored:</span>
+        <span id="session-count-val" class="meta-val highlight">0</span>
+      </div>
+    </div>
+
+    <div class="debug-actions">
+      <button id="toggle-json-btn" class="btn-action">View Session JSON</button>
+      <button id="clear-session-btn" class="btn-action danger">Clear Storage</button>
+    </div>
+
+    <pre id="json-viewer" class="json-viewer hidden"></pre>
+  </section>
+
   <footer>
-    Scrollopsy &bull; Attention Autopsy Engine
+    Scrollopsy &bull; Local Storage Session Engine
   </footer>
 
   <script src="popup.js"></script>
