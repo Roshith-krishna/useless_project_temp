@@ -10,6 +10,7 @@
   --btn-bg: #222538;
   --btn-hover: #2e334d;
   --danger-red: #e63946;
+  --warning-amber: #fb8500;
 }
 
 * {
@@ -19,39 +20,54 @@
 }
 
 body {
-  width: 340px;
-  min-height: 320px;
+  width: 400px;
+  min-height: 420px;
+  max-height: 580px;
   background-color: var(--bg-color);
   color: var(--text-main);
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  padding: 16px;
+  padding: 16px 18px;
   display: flex;
   flex-direction: column;
   gap: 14px;
+  overflow-y: auto;
+}
+
+/* Scrollbar styling */
+body::-webkit-scrollbar {
+  width: 6px;
+}
+body::-webkit-scrollbar-track {
+  background: var(--bg-color);
+}
+body::-webkit-scrollbar-thumb {
+  background: #2a2d42;
+  border-radius: 3px;
 }
 
 header {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   border-bottom: 1px solid var(--card-border);
   padding-bottom: 12px;
 }
 
 .logo-icon {
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
   background: linear-gradient(135deg, var(--accent-red), var(--accent-purple));
   display: flex;
   align-items: center;
   justify-content: center;
   box-shadow: 0 0 12px rgba(255, 75, 75, 0.4);
+  flex-shrink: 0;
 }
 
 .logo-icon svg {
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   fill: #fff;
 }
 
@@ -65,7 +81,7 @@ header {
 }
 
 .version-badge {
-  font-size: 10px;
+  font-size: 11px;
   color: var(--text-muted);
 }
 
@@ -96,11 +112,11 @@ header {
 }
 
 .dot {
-  width: 7px;
-  height: 7px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   background-color: var(--status-green);
-  box-shadow: 0 0 6px var(--status-green);
+  box-shadow: 0 0 8px var(--status-green);
 }
 
 .info-text {
@@ -113,10 +129,10 @@ header {
   background: var(--card-bg);
   border: 1px solid var(--card-border);
   border-radius: 8px;
-  padding: 12px;
+  padding: 14px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
 }
 
 .debug-header {
@@ -136,10 +152,10 @@ header {
 .debug-meta {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  font-size: 11px;
-  background: rgba(0, 0, 0, 0.2);
-  padding: 8px;
+  gap: 6px;
+  font-size: 12px;
+  background: rgba(0, 0, 0, 0.25);
+  padding: 10px 12px;
   border-radius: 6px;
   border: 1px solid rgba(255, 255, 255, 0.05);
 }
@@ -156,8 +172,8 @@ header {
 
 .meta-val {
   font-family: monospace;
-  font-size: 11px;
-  max-width: 170px;
+  font-size: 12px;
+  max-width: 210px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -168,19 +184,24 @@ header {
   font-weight: bold;
 }
 
+.warning {
+  color: var(--warning-amber);
+  font-weight: bold;
+}
+
 .debug-actions {
   display: flex;
-  gap: 8px;
+  gap: 10px;
 }
 
 .btn-sm {
   background: var(--btn-bg);
   border: 1px solid var(--card-border);
   color: var(--text-main);
-  padding: 2px 6px;
+  padding: 3px 8px;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 10px;
+  font-size: 11px;
   transition: background 0.2s;
 }
 
@@ -193,11 +214,13 @@ header {
   background: var(--btn-bg);
   border: 1px solid var(--card-border);
   color: var(--text-main);
-  padding: 6px 8px;
+  padding: 8px 12px;
   border-radius: 6px;
-  font-size: 11px;
+  font-size: 12px;
+  font-weight: 500;
   cursor: pointer;
   transition: background 0.2s, border-color 0.2s;
+  text-align: center;
 }
 
 .btn-action:hover {
@@ -207,7 +230,7 @@ header {
 
 .btn-action.danger {
   color: #ff8a8a;
-  border-color: rgba(230, 57, 70, 0.3);
+  border-color: rgba(230, 57, 70, 0.4);
 }
 
 .btn-action.danger:hover {
@@ -215,27 +238,61 @@ header {
   border-color: var(--danger-red);
 }
 
+/* Inline Confirmation Dialog */
+.confirm-box {
+  background: rgba(230, 57, 70, 0.1);
+  border: 1px solid rgba(230, 57, 70, 0.35);
+  border-radius: 6px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.confirm-text {
+  font-size: 12px;
+  color: #ffb4b4;
+  font-weight: 500;
+  text-align: center;
+}
+
+.confirm-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-action.danger-solid {
+  background: var(--danger-red);
+  color: #fff;
+  border-color: var(--danger-red);
+}
+
+.btn-action.danger-solid:hover {
+  background: #d62828;
+}
+
 .json-viewer {
   background: #090a0f;
   border: 1px solid #1f2233;
   border-radius: 6px;
-  padding: 8px;
+  padding: 10px;
   font-family: monospace;
-  font-size: 10px;
+  font-size: 11px;
   color: #a5d6a7;
-  max-height: 180px;
+  max-height: 220px;
   overflow-y: auto;
   white-space: pre-wrap;
   word-break: break-all;
 }
 
 .hidden {
-  display: none;
+  display: none !important;
 }
 
 footer {
-  font-size: 10px;
+  font-size: 11px;
   color: var(--text-muted);
   text-align: center;
   margin-top: auto;
+  padding-top: 6px;
 }

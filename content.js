@@ -1,6 +1,6 @@
-// Scrollopsy - YouTube Shorts Tracker with Time Tracking (Stage 4)
+// Scrollopsy - YouTube Shorts Tracker: Viewing Events Engine (Stage 4.1)
 console.log(
-  "%c[SCROLLOPSY]%c Stage 4 YouTube Shorts Tracker Active (Time Tracking Enabled).",
+  "%c[SCROLLOPSY]%c Stage 4.1 Viewing Events Engine Active.",
   "color: #ff4b4b; font-weight: bold;",
   "color: #00e676; font-weight: bold;"
 );
@@ -13,27 +13,34 @@ console.log(
  *    while the browser tab is in the 'visible' state. This is an active screen presence proxy
  *    and does NOT guarantee the user's actual cognitive attention (e.g. user looking away from
  *    screen, video paused, or video buffering).
- * 2. Background Tab & CPU Throttling:
- *    Modern Chromium browsers aggressively suspend or throttle JavaScript timers and rendering
- *    for backgrounded tabs or minimized windows. We explicitly mitigate inflated durations
- *    by listening to the Page Visibility API ('visibilitychange') and closing the active Short
- *    observation immediately when the tab is hidden.
- * 3. Page Teardown / Unload Constraints:
+ * 2. HTML5 Video Element Duration:
+ *    videoDurationMs is read from the active HTML5 <video> element's duration property once metadata
+ *    loads. If YouTube delays loading metadata or buffers, videoDurationMs may resolve upon event close.
+ * 3. Background Tab & CPU Throttling:
+ *    Chromium suspends or throttles JavaScript execution in backgrounded tabs. Visibility
+ *    change listeners ('visibilitychange') close the active viewing event immediately when the tab is hidden
+ *    to prevent recording inflated background idle time.
+ * 4. Page Teardown / Unload Constraints:
  *    When a tab is closed or the user navigates away, 'pagehide' / 'beforeunload' events are fired.
- *    Because Chrome Manifest V3 service workers and asynchronous chrome.storage calls may not be
- *    guaranteed to finish during rapid process destruction, duration metrics calculated at unload
- *    are dispatched on a best-effort basis.
- * 4. Wall-Clock Jitter:
- *    Timestamps (startedAt, endedAt) are based on client system clock (new Date().toISOString()),
- *    while durations are calculated via Date.now() millisecond differences.
+ *    Chrome storage writes during process termination execute on a best-effort basis.
+ * 5. Wall-Clock Jitter:
+ *    startedAt and endedAt use client system clock ISO strings, while watchDurationMs is calculated
+ *    via Date.now() millisecond differences.
  */
 
-let activeShortId = null;
+// Tracking State
+let activeVideoId = null;
 let activeUrl = null;
+let lastEvaluatedUrl = null;
 let isOnShortsPage = false;
 
-// Active Short Timing State
+// Active Viewing Event State
 let currentTiming = null;
+
+// In-memory active session (Single Source of Truth to eliminate storage race conditions)
+let activeSession = null;
+let isSessionLoading = false;
+let sessionInitCallbacks = [];
 
 /**
  * Extracts unique Short ID from a YouTube Shorts URL.
@@ -56,24 +63,63 @@ function extractShortId(urlStr) {
 }
 
 /**
+ * Extracts the video duration in milliseconds from the active YouTube Short <video> element.
+ */
+function getActiveVideoDurationMs() {
+  try {
+    // 1. Active reel renderer video
+    const activeReelVideo = document.querySelector("ytd-reel-video-renderer[is-active] video");
+    if (activeReelVideo && !isNaN(activeReelVideo.duration) && isFinite(activeReelVideo.duration) && activeReelVideo.duration > 0) {
+      return Math.round(activeReelVideo.duration * 1000);
+    }
+
+    // 2. Shorts player video container
+    const shortsVideo = document.querySelector("#shorts-player video, ytd-shorts video");
+    if (shortsVideo && !isNaN(shortsVideo.duration) && isFinite(shortsVideo.duration) && shortsVideo.duration > 0) {
+      return Math.round(shortsVideo.duration * 1000);
+    }
+
+    // 3. Fallback: inspect visible video elements
+    const videos = Array.from(document.querySelectorAll("video"));
+    for (const v of videos) {
+      if (!isNaN(v.duration) && isFinite(v.duration) && v.duration > 0 && v.offsetHeight > 150) {
+        return Math.round(v.duration * 1000);
+      }
+    }
+
+    // 4. Any video element with valid duration
+    for (const v of videos) {
+      if (!isNaN(v.duration) && isFinite(v.duration) && v.duration > 0) {
+        return Math.round(v.duration * 1000);
+      }
+    }
+  } catch (e) {
+    // Ignore DOM query errors
+  }
+  return null;
+}
+
+/**
  * Central logger for Scrollopsy events.
  */
 function logScrollopsy(tag, message, details = null) {
   const prefixStyle = "color: #ff4b4b; font-weight: bold;";
   let tagStyle = "color: #00e676; font-weight: bold;";
 
-  if (tag === "DUPLICATE IGNORED") {
+  if (tag === "VIEW START") {
+    tagStyle = "color: #06d6a0; font-weight: bold;";
+  } else if (tag === "VIEW END") {
+    tagStyle = "color: #ef476f; font-weight: bold;";
+  } else if (tag === "WATCH DURATION") {
+    tagStyle = "color: #ffd166; font-weight: bold;";
+  } else if (tag === "COMPLETION") {
+    tagStyle = "color: #4cc9f0; font-weight: bold;";
+  } else if (tag === "DUPLICATE IGNORED") {
     tagStyle = "color: #ffb703; font-weight: bold;";
   } else if (tag === "NAVIGATION DETECTED") {
-    tagStyle = "color: #4cc9f0; font-weight: bold;";
-  } else if (tag === "SESSION RECORDED" || tag === "SESSION CREATED") {
     tagStyle = "color: #b388ff; font-weight: bold;";
-  } else if (tag === "SHORT START") {
-    tagStyle = "color: #06d6a0; font-weight: bold;";
-  } else if (tag === "SHORT END") {
-    tagStyle = "color: #ef476f; font-weight: bold;";
-  } else if (tag === "DURATION") {
-    tagStyle = "color: #ffd166; font-weight: bold;";
+  } else if (tag === "SESSION RECORDED" || tag === "SESSION CREATED") {
+    tagStyle = "color: #a78bfa; font-weight: bold;";
   }
 
   if (details) {
@@ -95,176 +141,243 @@ function logScrollopsy(tag, message, details = null) {
 }
 
 /**
- * Gets the existing active session from chrome.storage.local or creates a new one.
+ * Ensures in-memory activeSession is loaded from storage or created.
  */
-function getOrCreateActiveSession(callback) {
+function ensureActiveSession(callback) {
+  if (activeSession && activeSession.endedAt === null) {
+    if (callback) callback(activeSession);
+    return;
+  }
+
+  if (callback) {
+    sessionInitCallbacks.push(callback);
+  }
+
+  if (isSessionLoading) return;
+  isSessionLoading = true;
+
   chrome.storage.local.get(["currentSession"], (result) => {
+    isSessionLoading = false;
     let session = result.currentSession;
+
     if (!session || session.endedAt !== null) {
       session = {
         id: "session_" + Date.now(),
         startedAt: new Date().toISOString(),
         endedAt: null,
-        shorts: []
+        views: []
       };
-      chrome.storage.local.set({ currentSession: session }, () => {
-        logScrollopsy(
-          "SESSION CREATED",
-          `Automatically created active session [${session.id}]`,
-          session
-        );
-        if (callback) callback(session);
-      });
-    } else {
-      if (callback) callback(session);
-    }
-  });
-}
-
-/**
- * Saves a newly started Short into the active session in local storage.
- */
-function recordShortToSession(shortRecord) {
-  getOrCreateActiveSession((session) => {
-    session.shorts.push(shortRecord);
-    chrome.storage.local.set({ currentSession: session }, () => {
       logScrollopsy(
-        "SESSION RECORDED",
-        `Short [${shortRecord.id}] stored in session [${session.id}] (Total shorts: ${session.shorts.length})`
+        "SESSION CREATED",
+        `Automatically created active session [${session.id}]`,
+        session
       );
-    });
-  });
-}
-
-/**
- * Updates a closed Short in chrome.storage.local with its endedAt, durationMs, and durationSeconds.
- */
-function updateShortEndedInStorage(shortId, endedAt, durationMs, durationSeconds) {
-  chrome.storage.local.get(["currentSession"], (result) => {
-    const session = result.currentSession;
-    if (session && session.shorts && session.shorts.length > 0) {
-      // Find the latest occurrence of this short where endedAt is not yet set
-      for (let i = session.shorts.length - 1; i >= 0; i--) {
-        if (session.shorts[i].id === shortId && !session.shorts[i].endedAt) {
-          session.shorts[i].endedAt = endedAt;
-          session.shorts[i].durationMs = durationMs;
-          session.shorts[i].durationSeconds = durationSeconds;
-          break;
-        }
-      }
-      chrome.storage.local.set({ currentSession: session });
     }
-  });
-}
 
-/**
- * Updates the title of the active short in session storage if resolved late.
- */
-function updateActiveShortTitleInSession(shortId, newTitle) {
-  chrome.storage.local.get(["currentSession"], (result) => {
-    const session = result.currentSession;
-    if (session && session.shorts && session.shorts.length > 0) {
-      const lastIndex = session.shorts.length - 1;
-      if (session.shorts[lastIndex].id === shortId) {
-        session.shorts[lastIndex].title = newTitle;
-        chrome.storage.local.set({ currentSession: session });
-      }
+    if (!Array.isArray(session.views)) {
+      session.views = Array.isArray(session.shorts) ? session.shorts : [];
     }
+
+    // Reference alias for backward compatibility
+    session.shorts = session.views;
+
+    activeSession = session;
+    persistSession();
+
+    const callbacks = sessionInitCallbacks;
+    sessionInitCallbacks = [];
+    callbacks.forEach((cb) => cb(activeSession));
   });
 }
 
 /**
- * Closes the currently active Short timing session.
- * Calculates duration and writes to storage.
+ * Persists the in-memory activeSession to chrome.storage.local atomically.
  */
-function closeActiveShort(reason = "navigation") {
-  if (!currentTiming) return;
+function persistSession(callback) {
+  if (!activeSession) return;
+  // Ensure backward compatibility alias
+  activeSession.shorts = activeSession.views;
+
+  // Derive behavioral analysis layer
+  if (typeof analyzeSessionBehavior === "function") {
+    activeSession.behaviorAnalysis = analyzeSessionBehavior(activeSession);
+  }
+
+  chrome.storage.local.set({ currentSession: activeSession }, () => {
+    if (chrome.runtime.lastError) {
+      console.error("[SCROLLOPSY] Storage persist error:", chrome.runtime.lastError);
+    }
+    if (callback) callback();
+  });
+}
+
+/**
+ * Closes the currently active viewing event.
+ * Calculates watchDurationMs, resolves videoDurationMs, and calculates completionRate.
+ */
+function closeActiveViewingEvent(reason = "navigation") {
+  if (!currentTiming) return null;
 
   const endTimeMs = Date.now();
-  const durationMs = Math.max(0, endTimeMs - currentTiming.startTimeMs);
-  const durationSeconds = Math.round((durationMs / 1000) * 10) / 10;
+  const watchDurationMs = Math.max(0, endTimeMs - currentTiming.startTimeMs);
   const endedAt = new Date(endTimeMs).toISOString();
-  const closedId = currentTiming.shortId;
+  const closedVideoId = currentTiming.videoId;
+  const viewId = currentTiming.viewId;
+
+  // Resolve video duration if it wasn't yet loaded at event start
+  let videoDurationMs = currentTiming.videoDurationMs || getActiveVideoDurationMs();
+
+  // Calculate completion rate when videoDurationMs is available
+  const completionRate =
+    videoDurationMs && videoDurationMs > 0
+      ? Math.round((watchDurationMs / videoDurationMs) * 1000) / 1000
+      : null;
 
   logScrollopsy(
-    "SHORT END",
-    `Closed Short [${closedId}] (reason: ${reason})`,
+    "VIEW END",
+    `Ended viewing Short [${closedVideoId}] (reason: ${reason})`,
     {
-      id: closedId,
+      id: viewId,
+      videoId: closedVideoId,
       startedAt: currentTiming.startedAt,
       endedAt: endedAt
     }
   );
 
   logScrollopsy(
-    "DURATION",
-    `Short [${closedId}] active for ${durationSeconds}s (${durationMs}ms)`,
+    "WATCH DURATION",
+    `Short [${closedVideoId}] watch duration: ${(watchDurationMs / 1000).toFixed(1)}s (${watchDurationMs}ms)`,
     {
-      id: closedId,
-      durationSeconds: durationSeconds,
-      durationMs: durationMs
+      id: viewId,
+      videoId: closedVideoId,
+      watchDurationMs: watchDurationMs
     }
   );
 
-  updateShortEndedInStorage(closedId, endedAt, durationMs, durationSeconds);
+  logScrollopsy(
+    "COMPLETION",
+    `Completion rate for Short [${closedVideoId}]: ${
+      completionRate !== null ? (completionRate * 100).toFixed(1) + "%" : "N/A"
+    } (videoDuration: ${videoDurationMs ? (videoDurationMs / 1000).toFixed(1) + "s" : "unknown"})`,
+    {
+      id: viewId,
+      videoId: closedVideoId,
+      watchDurationMs: watchDurationMs,
+      videoDurationMs: videoDurationMs,
+      completionRate: completionRate
+    }
+  );
+
+  // Synchronously update in-memory activeSession.views to eliminate storage race conditions
+  if (activeSession && Array.isArray(activeSession.views)) {
+    for (let i = activeSession.views.length - 1; i >= 0; i--) {
+      if (activeSession.views[i].id === viewId && !activeSession.views[i].endedAt) {
+        activeSession.views[i].endedAt = endedAt;
+        activeSession.views[i].watchDurationMs = watchDurationMs;
+        activeSession.views[i].videoDurationMs = videoDurationMs;
+        activeSession.views[i].completionRate = completionRate;
+        break;
+      }
+    }
+  }
+
+  const closedData = {
+    id: viewId,
+    videoId: closedVideoId,
+    startedAt: currentTiming.startedAt,
+    endedAt: endedAt,
+    watchDurationMs: watchDurationMs,
+    videoDurationMs: videoDurationMs,
+    completionRate: completionRate
+  };
 
   currentTiming = null;
+  return closedData;
 }
 
 /**
- * Starts timing a newly detected Short.
+ * Starts a new viewing event for a detected Short and appends it to activeSession.
  */
-function startTimingShort(shortId, url, triggerReason = "navigation") {
-  // If a previous short was active, close it first
-  if (currentTiming) {
-    closeActiveShort("switched_to_new_short");
-  }
+function startNewViewingEvent(videoId, url, triggerReason = "navigation") {
+  ensureActiveSession(() => {
+    // 1. If a previous viewing event was active, close it synchronously first
+    let closedPreviousEvent = null;
+    if (currentTiming) {
+      closedPreviousEvent = closeActiveViewingEvent("switched_to_new_short");
+    }
 
-  const startTimeMs = Date.now();
-  const startedAt = new Date(startTimeMs).toISOString();
-  const title = document.title || "YouTube Short";
+    const startTimeMs = Date.now();
+    const startedAt = new Date(startTimeMs).toISOString();
+    const title = document.title || "YouTube Short";
+    const viewId = "view_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7);
+    const videoDurationMs = getActiveVideoDurationMs();
 
-  currentTiming = {
-    shortId: shortId,
-    url: url,
-    title: title,
-    startTimeMs: startTimeMs,
-    startedAt: startedAt
-  };
-
-  logScrollopsy(
-    "SHORT START",
-    `Started timing Short [${shortId}] (trigger: ${triggerReason})`,
-    {
-      id: shortId,
+    currentTiming = {
+      viewId: viewId,
+      videoId: videoId,
       url: url,
       title: title,
-      startedAt: startedAt
-    }
-  );
+      startTimeMs: startTimeMs,
+      startedAt: startedAt,
+      videoDurationMs: videoDurationMs
+    };
 
-  const initialRecord = {
-    id: shortId,
-    url: url,
-    title: title,
-    startedAt: startedAt,
-    endedAt: null,
-    durationMs: null,
-    durationSeconds: null
-  };
+    const newViewEvent = {
+      id: viewId,
+      videoId: videoId,
+      url: url,
+      title: title,
+      startedAt: startedAt,
+      endedAt: null,
+      watchDurationMs: null,
+      videoDurationMs: videoDurationMs,
+      completionRate: null
+    };
 
-  recordShortToSession(initialRecord);
+    logScrollopsy(
+      "VIEW START",
+      `Started viewing Short [${videoId}] (Event ID: ${viewId}, trigger: ${triggerReason})`,
+      newViewEvent
+    );
 
-  // Late title update handler
-  if (!document.title || document.title === "YouTube") {
+    // 2. Append new viewing event to in-memory session
+    activeSession.views.push(newViewEvent);
+
+    // 3. Atomically persist both closed event and newly opened event to storage
+    persistSession(() => {
+      logScrollopsy(
+        "SESSION RECORDED",
+        `Saved session to local storage. Total views: ${activeSession.views.length}`,
+        {
+          closedPrevious: closedPreviousEvent,
+          activeView: newViewEvent
+        }
+      );
+    });
+
+    // 4. Late title and video duration resolution (metadata might finish buffering right after navigation)
     setTimeout(() => {
-      if (currentTiming && currentTiming.shortId === shortId && document.title && document.title !== currentTiming.title) {
-        currentTiming.title = document.title;
-        updateActiveShortTitleInSession(shortId, document.title);
-        logScrollopsy("NEW SHORT", `Updated title for Short [${shortId}]: "${document.title}"`);
+      let needsPersist = false;
+      if (currentTiming && currentTiming.viewId === viewId) {
+        if (document.title && document.title !== "YouTube" && document.title !== currentTiming.title) {
+          currentTiming.title = document.title;
+          newViewEvent.title = document.title;
+          needsPersist = true;
+        }
+        if (!currentTiming.videoDurationMs) {
+          const resolvedDuration = getActiveVideoDurationMs();
+          if (resolvedDuration) {
+            currentTiming.videoDurationMs = resolvedDuration;
+            newViewEvent.videoDurationMs = resolvedDuration;
+            needsPersist = true;
+          }
+        }
+        if (needsPersist) {
+          persistSession();
+        }
       }
-    }, 500);
-  }
+    }, 600);
+  });
 }
 
 /**
@@ -276,53 +389,66 @@ function handleNavigation(source = "check") {
   const isShort = window.location.pathname.startsWith("/shorts/");
 
   if (isShort) {
-    const shortId = extractShortId(currentUrl);
-    if (!shortId) return;
+    const videoId = extractShortId(currentUrl);
+    if (!videoId) return;
 
     if (!isOnShortsPage) {
+      // First entry into Shorts section or returning to Shorts from non-Shorts page
       isOnShortsPage = true;
-      activeShortId = shortId;
+      activeVideoId = videoId;
       activeUrl = currentUrl;
+      lastEvaluatedUrl = currentUrl;
 
       logScrollopsy(
         "NAVIGATION DETECTED",
-        `Entered YouTube Shorts section [ID: ${shortId}]`
-      );
-
-      getOrCreateActiveSession(() => {
-        // Only start timing if tab is currently visible
-        if (document.visibilityState !== "hidden") {
-          startTimingShort(shortId, currentUrl, "entry");
-        }
-      });
-    } else if (shortId !== activeShortId) {
-      const prevId = activeShortId;
-      activeShortId = shortId;
-      activeUrl = currentUrl;
-
-      logScrollopsy(
-        "NAVIGATION DETECTED",
-        `Switched Short: [${prevId || "none"}] ➔ [${shortId}]`
+        `Entered YouTube Shorts section [Video ID: ${videoId}]`
       );
 
       if (document.visibilityState !== "hidden") {
-        startTimingShort(shortId, currentUrl, "scroll");
+        startNewViewingEvent(videoId, currentUrl, "entry");
       }
-    } else if (source === "event" && activeShortId === shortId) {
+    } else if (videoId !== activeVideoId) {
+      // Navigated to a DIFFERENT Short (scrolled up/down or clicked)
+      const prevId = activeVideoId;
+      activeVideoId = videoId;
+      activeUrl = currentUrl;
+      lastEvaluatedUrl = currentUrl;
+
       logScrollopsy(
-        "DUPLICATE IGNORED",
-        `Already viewing Short ID [${shortId}] (ignored redundant trigger)`
+        "NAVIGATION DETECTED",
+        `Switched Short: [${prevId || "none"}] ➔ [${videoId}]`
       );
+
+      if (document.visibilityState !== "hidden") {
+        startNewViewingEvent(videoId, currentUrl, "scroll");
+      }
+    } else if (activeVideoId === videoId) {
+      // Same Short ID encountered again
+      if (currentUrl !== lastEvaluatedUrl) {
+        lastEvaluatedUrl = currentUrl;
+        logScrollopsy(
+          "DUPLICATE IGNORED",
+          `Same Short ID [${videoId}] (URL variation: ${currentUrl})`
+        );
+      } else if (source === "event") {
+        logScrollopsy(
+          "DUPLICATE IGNORED",
+          `Already actively viewing Short ID [${videoId}] (ignored redundant navigation event)`
+        );
+      }
     }
   } else if (isOnShortsPage) {
+    // Navigated away from YouTube Shorts to standard YouTube page
     logScrollopsy(
       "NAVIGATION DETECTED",
       `Left YouTube Shorts. Current URL: ${currentUrl}`
     );
-    closeActiveShort("left_shorts");
+    closeActiveViewingEvent("left_shorts");
+    persistSession();
     isOnShortsPage = false;
-    activeShortId = null;
+    activeVideoId = null;
     activeUrl = null;
+    lastEvaluatedUrl = null;
   }
 }
 
@@ -336,17 +462,18 @@ window.addEventListener("popstate", () => handleNavigation("event"));
 // Periodic fallback polling for SPA transitions
 setInterval(() => handleNavigation("poll"), 300);
 
-// Tab visibility handling: pause/close timer when hidden, resume when visible
+// Tab visibility handling: close viewing event when hidden, start new viewing event when visible
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "hidden") {
     if (currentTiming) {
-      closeActiveShort("tab_hidden");
+      closeActiveViewingEvent("tab_hidden");
+      persistSession();
     }
   } else if (document.visibilityState === "visible") {
     if (window.location.pathname.startsWith("/shorts/")) {
-      const shortId = extractShortId(window.location.href);
-      if (shortId && !currentTiming) {
-        startTimingShort(shortId, window.location.href, "tab_visible");
+      const videoId = extractShortId(window.location.href);
+      if (videoId && !currentTiming) {
+        startNewViewingEvent(videoId, window.location.href, "tab_visible");
       }
     }
   }
@@ -355,12 +482,14 @@ document.addEventListener("visibilitychange", () => {
 // Page unload / teardown handling
 window.addEventListener("pagehide", () => {
   if (currentTiming) {
-    closeActiveShort("pagehide");
+    closeActiveViewingEvent("pagehide");
+    persistSession();
   }
 });
 
 window.addEventListener("beforeunload", () => {
   if (currentTiming) {
-    closeActiveShort("beforeunload");
+    closeActiveViewingEvent("beforeunload");
+    persistSession();
   }
 });
