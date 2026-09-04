@@ -56,6 +56,7 @@ For Software:
 *The detailed analysis section of the Scrollopsy dashboard*
 
 ![The Scrollopsy browser extension popup, displaying the active Session Behavioral Inspector with real-time statistics like total views, instant skips, and average watch duration, alongside the button to launch the full autopsy.](./screenshots/pop_up.png)
+
 *The Scrollopsy browser extension popup, displaying the active Session Behavioral Inspector with real-time statistics like total views, instant skips, and average watch duration, alongside the button to launch the full autopsy.*
 
 ---
