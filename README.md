@@ -17,10 +17,10 @@
 Scrollopsy is a Chrome Extension that observes a user's YouTube Shorts scrolling session and creates an entertaining "autopsy" of their attention trajectory. It passively records viewing events, active watch durations, video completion rates, instant skips, and revisits.
 
 ### The Problem (that doesn't exist)
-You open YouTube Shorts intending to watch one 15-second video, and suddenly it's 2 AM, your thumb has developed repetitive strain injury, and you have no idea how you transitioned from sourdough baking to competitive lawnmower racing.
+People keep telling you to "stop doomscrolling," but honestly? Doomscrolling is great. The real tragedy isn't that you spent 3 hours consuming 180 vertical videos—it's that all that frantic thumb labor, niche rabbit-hole exploration, and micro-content consumption disappears into the void with zero productivity, zero deliverables, and no forensic paper trail to show for your hard work.
 
 ### The Solution (that nobody asked for)
-A digital "autopsy" of your doomscroll. Scrollopsy monitors your Shorts route changes and player state in real time, records your viewing duration down to the millisecond, calculates completion rates, detects when you frantically swipe past content in under 2 seconds, and tracks when you obsessively scroll back to rewatch a Short.
+We don't discourage your doomscroll—we optimize and certify it. Scrollopsy transforms mindless scrolling into an entertaining, forensic post-mortem dossier. It tracks your exact trajectory down to the millisecond, calculates completion rates, indexes every rabbit hole you fell into, and automatically delivers a comprehensive "Doomscroll Autopsy Report" the moment you close the tab. Now your late-night scrolling has data, receipts, and full retrospective value.
 
 ## Technical Details
 ### Technologies/Components Used
