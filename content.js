@@ -457,6 +457,14 @@ function handleNavigation(source = "check") {
         `Entered YouTube Shorts section [Video ID: ${videoId}]`
       );
 
+      try {
+        chrome.runtime.sendMessage({
+          type: "SHORTS_SESSION_ACTIVE",
+          videoId: videoId,
+          url: currentUrl
+        });
+      } catch (e) {}
+
       if (document.visibilityState !== "hidden") {
         startNewViewingEvent(videoId, currentUrl, "entry");
       }
@@ -471,6 +479,14 @@ function handleNavigation(source = "check") {
         "NAVIGATION DETECTED",
         `Switched Short: [${prevId || "none"}] ➔ [${videoId}]`
       );
+
+      try {
+        chrome.runtime.sendMessage({
+          type: "SHORTS_SESSION_ACTIVE",
+          videoId: videoId,
+          url: currentUrl
+        });
+      } catch (e) {}
 
       if (document.visibilityState !== "hidden") {
         startNewViewingEvent(videoId, currentUrl, "scroll");
@@ -497,7 +513,12 @@ function handleNavigation(source = "check") {
       `Left YouTube Shorts. Current URL: ${currentUrl}`
     );
     closeActiveViewingEvent("left_shorts");
-    persistSession();
+    persistSession(() => {
+      try {
+        chrome.runtime.sendMessage({ type: "SHORTS_NAVIGATED_AWAY" });
+      } catch (e) {}
+    });
+    activeSession = null;
     isOnShortsPage = false;
     activeVideoId = null;
     activeUrl = null;
@@ -537,6 +558,9 @@ window.addEventListener("pagehide", () => {
   if (currentTiming) {
     closeActiveViewingEvent("pagehide");
     persistSession();
+    try {
+      chrome.runtime.sendMessage({ type: "SHORTS_CLOSING" });
+    } catch (e) {}
   }
 });
 
@@ -544,5 +568,8 @@ window.addEventListener("beforeunload", () => {
   if (currentTiming) {
     closeActiveViewingEvent("beforeunload");
     persistSession();
+    try {
+      chrome.runtime.sendMessage({ type: "SHORTS_CLOSING" });
+    } catch (e) {}
   }
 });

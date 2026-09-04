@@ -21,18 +21,22 @@ document.addEventListener("DOMContentLoaded", () => {
   let currentSessionData = null;
 
   function loadStoredSession() {
-    chrome.storage.local.get(["currentSession"], (result) => {
+    chrome.storage.local.get(["currentSession", "lastAutopsySession"], (result) => {
       currentSessionData = result.currentSession;
+      const isArchived = !currentSessionData && !!result.lastAutopsySession;
+      const displaySession = currentSessionData || result.lastAutopsySession;
 
-      const events = currentSessionData && (currentSessionData.views || currentSessionData.shorts);
+      const events = displaySession && (displaySession.views || displaySession.shorts);
 
-      if (currentSessionData && Array.isArray(events) && events.length > 0) {
-        sessionIdEl.textContent = currentSessionData.id || "Unknown";
+      if (displaySession && Array.isArray(events) && events.length > 0) {
+        sessionIdEl.textContent = isArchived 
+          ? `${displaySession.id} (Archived)` 
+          : (displaySession.id || "Unknown");
 
         // Generate or fetch behavioral analysis
-        let analysis = currentSessionData.behaviorAnalysis;
+        let analysis = displaySession.behaviorAnalysis;
         if (!analysis && typeof analyzeSessionBehavior === "function") {
-          analysis = analyzeSessionBehavior(currentSessionData);
+          analysis = analyzeSessionBehavior(displaySession);
         }
 
         if (analysis && analysis.summary) {
@@ -51,7 +55,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // Display the complete data including the behavioral analysis object
         const displayData = {
-          session: currentSessionData,
+          status: isArchived ? "Archived (Active storage auto-cleared for next session)" : "Active Session",
+          session: displaySession,
           behaviorAnalysis: analysis || null
         };
 
@@ -99,9 +104,9 @@ document.addEventListener("DOMContentLoaded", () => {
     defaultActionsEl.classList.remove("hidden");
   });
 
-  // Confirmed clear
+  // Confirmed clear (clears both active and archived sessions)
   confirmYesBtn.addEventListener("click", () => {
-    chrome.storage.local.remove(["currentSession"], () => {
+    chrome.storage.local.remove(["currentSession", "lastAutopsySession"], () => {
       confirmClearBoxEl.classList.add("hidden");
       defaultActionsEl.classList.remove("hidden");
       loadStoredSession();
@@ -142,7 +147,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Listen for real-time storage changes while popup is open
   chrome.storage.onChanged.addListener((changes, areaName) => {
-    if (areaName === "local" && changes.currentSession) {
+    if (areaName === "local" && (changes.currentSession || changes.lastAutopsySession)) {
       loadStoredSession();
     }
   });

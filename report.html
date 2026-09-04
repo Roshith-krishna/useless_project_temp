@@ -13,6 +13,7 @@
       <div class="case-file-badge">
         <span class="stamp-pill">CASE FILE #<span id="case-id">OBS-0000</span></span>
         <span class="classified-stamp">AUTOPSY VERIFIED</span>
+        <span id="session-status-badge" class="session-status-pill hidden">Storage Auto-Cleared</span>
       </div>
 
       <div class="header-main">
@@ -95,22 +96,18 @@
         </div>
       </section>
 
-      <!-- Retention and topic trajectory -->
+      <!-- Retention trajectory -->
       <section class="section-card trajectory-card">
         <div class="section-header">
           <div class="sec-title-wrap">
             <span class="sec-tag badge-cyan">SESSION TRAJECTORY</span>
-            <h2>RETENTION & TOPIC SHIFT</h2>
+            <h2>RETENTION BY SHORT</h2>
           </div>
         </div>
         <div class="trajectory-graphs">
           <div class="trajectory-graph">
             <div class="graph-heading"><strong>RETENTION BY SHORT</strong><span>Completion rate</span></div>
             <div id="retention-graph" class="retention-graph"></div>
-          </div>
-          <div class="trajectory-graph">
-            <div class="graph-heading"><strong>TOPIC CHANGE ACROSS SESSION</strong><span>Chronological topic path</span></div>
-            <div id="topic-shift-graph" class="topic-shift-graph"></div>
           </div>
         </div>
       </section>
@@ -144,19 +141,6 @@
         </div>
       </section>
     </div>
-
-    <!-- Data-Driven Comedic Autopsy Observations -->
-    <section class="section-card observations-section">
-      <div class="section-header">
-        <div class="sec-title-wrap">
-          <span class="sec-tag badge-purple">CORONER SUMMARY</span>
-          <h2>AUTOPSY OBSERVATIONS</h2>
-        </div>
-      </div>
-      <div id="observations-list" class="observations-quotes">
-        <!-- Dynamically injected from measured session telemetry -->
-      </div>
-    </section>
 
     <!-- Footer -->
     <footer class="autopsy-footer">

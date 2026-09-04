@@ -75,6 +75,24 @@ body {
   transform: rotate(-1deg);
 }
 
+.session-status-pill {
+  font-family: monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: var(--accent-green);
+  background: rgba(134, 194, 154, 0.08);
+  border: 1px solid rgba(134, 194, 154, 0.35);
+  padding: 3px 10px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  transition: opacity 0.3s ease;
+}
+
+.session-status-pill.hidden {
+  display: none;
+}
+
 .header-main {
   display: flex;
   align-items: flex-end;
@@ -423,40 +441,7 @@ body {
   stroke-width: 3;
 }
 
-.topic-path {
-  fill: none;
-  stroke-width: 3;
-  stroke-linecap: round;
-  opacity: 0.72;
-}
 
-.topic-point {
-  stroke: var(--bg-card);
-  stroke-width: 3;
-}
-
-.topic-legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 16px;
-  margin-top: 12px;
-  color: var(--text-muted);
-  font: 10px monospace;
-}
-
-.topic-legend span {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  white-space: nowrap;
-}
-
-.topic-legend i {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--topic-color);
-}
 
 .graph-empty {
   padding: 60px 12px;
@@ -644,41 +629,7 @@ body {
   padding: 12px 0;
 }
 
-/* Comedic Observations Section */
-.observations-section {
-  border-color: var(--border-color);
-  background: var(--bg-card);
-}
 
-.observations-quotes {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 14px;
-}
-
-.observation-bubble {
-  background: rgba(0, 0, 0, 0.4);
-  border: 1px solid var(--border-color);
-  border-left: 3px solid var(--border-highlight);
-  border-radius: 8px;
-  padding: 14px 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.obs-quote {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-main);
-  line-height: 1.4;
-}
-
-.obs-sub {
-  font-family: monospace;
-  font-size: 10px;
-  color: var(--text-muted);
-}
 
 /* Footer */
 .autopsy-footer {

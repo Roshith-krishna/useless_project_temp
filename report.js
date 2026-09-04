@@ -18,9 +18,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const strongestEngagementList = document.getElementById("strongest-engagement-list");
   const mostRewatchedContent = document.getElementById("most-rewatched-content");
   const mostSkippedContent = document.getElementById("most-skipped-content");
-  const observationsList = document.getElementById("observations-list");
   const retentionGraphEl = document.getElementById("retention-graph");
-  const topicShiftGraphEl = document.getElementById("topic-shift-graph");
 
   const refreshBtn = document.getElementById("refresh-report-btn");
   const closeBtn = document.getElementById("close-report-btn");
@@ -110,7 +108,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function renderTrajectoryGraphs(views) {
     renderRetentionGraph(views);
-    renderTopicShiftGraph(views);
   }
 
   function renderRetentionGraph(views) {
@@ -139,38 +136,50 @@ document.addEventListener("DOMContentLoaded", () => {
     retentionGraphEl.innerHTML = `<div class="graph-scroll"><svg style="width:${width}px;height:${height}px" viewBox="0 0 ${width} ${height}" role="img" aria-label="Retention rate by Short"><g>${guides}<path d="${area}" class="retention-area"/><path d="${line}" class="retention-line"/>${dots}</g></svg></div>`;
   }
 
-  function renderTopicShiftGraph(views) {
-    if (!topicShiftGraphEl) return;
-    if (!views || views.length === 0) {
-      topicShiftGraphEl.innerHTML = '<div class="graph-empty">No topic changes recorded.</div>';
-      return;
-    }
-
-    const topics = views.map((view) => view.semantics?.topics?.[0] || "Other");
-    const width = Math.max(560, views.length * 72);
-    const padX = 24;
-    const stepX = views.length === 1 ? 0 : (width - padX * 2) / (views.length - 1);
-    const yForTopic = new Map();
-    const uniqueTopics = [...new Set(topics)];
-    const height = Math.max(240, 62 + uniqueTopics.length * 44);
-    uniqueTopics.forEach((topic, index) => yForTopic.set(topic, 32 + index * 44));
-    const points = topics.map((topic, index) => ({ x: views.length === 1 ? width / 2 : padX + index * stepX, y: yForTopic.get(topic) }));
-    const segments = points.slice(1).map((point, index) => `<line x1="${points[index].x}" y1="${points[index].y}" x2="${point.x}" y2="${point.y}" stroke="${getGraphTopicColor(topics[index])}" class="topic-path"/>`).join("");
-    const nodes = points.map((point, index) => `<circle cx="${point.x}" cy="${point.y}" r="7" fill="${getGraphTopicColor(topics[index])}" class="topic-point"><title>Short #${index + 1}: ${escapeHtml(topics[index])}</title></circle><text x="${point.x}" y="${height - 9}" class="graph-step-label">#${index + 1}</text>`).join("");
-    const legend = [...new Set(topics)].map((topic) => `<span style="--topic-color:${getGraphTopicColor(topic)}"><i></i>${escapeHtml(topic)}</span>`).join("");
-    topicShiftGraphEl.innerHTML = `<div class="graph-scroll"><svg style="width:${width}px;height:${height}px" viewBox="0 0 ${width} ${height}" role="img" aria-label="Topic changes across the session"><g>${segments}${nodes}</g></svg></div><div class="topic-legend">${legend}</div>`;
-  }
-
   function loadReport() {
-    chrome.storage.local.get(["currentSession"], (res) => {
-      const session = res.currentSession;
+    chrome.storage.local.get(["currentSession", "lastAutopsySession"], (res) => {
+      let session = res.currentSession;
+      let shouldClearActive = false;
+
+      const currentEvents = session && (session.views || session.shorts);
+      if (session && Array.isArray(currentEvents) && currentEvents.length > 0) {
+        shouldClearActive = true;
+      } else if (res.lastAutopsySession) {
+        session = res.lastAutopsySession;
+      }
+
       if (!session) {
         renderEmptyDossier();
+        updateStatusBadge("No Recorded Session Found", false);
         return;
       }
 
       renderDossier(session);
+
+      if (shouldClearActive) {
+        // Archive current session for persistent dossier viewing
+        chrome.storage.local.set({ lastAutopsySession: session }, () => {
+          // Auto-clear active session storage so the next YouTube Shorts visit starts fresh!
+          chrome.storage.local.remove(["currentSession"], () => {
+            console.log("[Scrollopsy Report] Session storage auto-cleared. Archived to lastAutopsySession.");
+            updateStatusBadge("Storage Auto-Cleared • Ready For Next Session", true);
+          });
+        });
+      } else {
+        updateStatusBadge("Archived Dossier • Active Storage Clean", true);
+      }
     });
+  }
+
+  function updateStatusBadge(text, visible) {
+    const badge = document.getElementById("session-status-badge");
+    if (!badge) return;
+    if (visible) {
+      badge.textContent = text;
+      badge.classList.remove("hidden");
+    } else {
+      badge.classList.add("hidden");
+    }
   }
 
   function renderDossier(session) {
@@ -227,9 +236,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // 6. Section 3: MOST AGGRESSIVELY SKIPPED
     renderMostSkipped(patterns, topicEngagement);
-
-    // 7. Section 4: DATA-DRIVEN COMEDIC OBSERVATIONS
-    renderObservations(summary, topicEngagement, patterns, byVideo, durSec);
   }
 
   function renderStrongestEngagement(topicEngagement) {
@@ -311,86 +317,6 @@ document.addEventListener("DOMContentLoaded", () => {
         mostSkippedContent.innerHTML = '<div class="empty-placeholder">No instant-rejection clusters recorded.</div>';
       }
     }
-  }
-
-  function renderObservations(summary, topicEngagement, patterns, byVideo, durSec) {
-    observationsList.innerHTML = "";
-    const observations = [];
-
-    const totalViews = summary.totalShortsViewed || 0;
-    const durMins = Math.round(durSec / 60);
-
-    // Observation 1: Session Duration Irony
-    if (durMins >= 10) {
-      observations.push({
-        quote: `"You came here for one Short. You stayed for ${durMins} minutes."`,
-        sub: "MEASURED TIME CONSUMPTION"
-      });
-    } else if (durMins >= 1) {
-      observations.push({
-        quote: `"You consumed ${totalViews} Shorts in ${durMins} minute${durMins > 1 ? "s" : ""}. Rapid intake confirmed."`,
-        sub: "VELOCITY PROFILE"
-      });
-    }
-
-    // Observation 2: Top engagement dominance
-    const topTopic = Object.values(topicEngagement || {}).sort((a, b) => b.engagementSignal - a.engagementSignal)[0];
-    if (topTopic && topTopic.shortsCount >= 3) {
-      observations.push({
-        quote: `"${topTopic.topic} became a full-time occupation (${topTopic.shortsCount} Shorts, ${topTopic.totalWatchTimeSeconds}s)."`,
-        sub: "PRIMARY ATTRACTION FACTOR"
-      });
-    }
-
-    // Observation 3: Revisit commentary
-    const topRewatched = Object.values(byVideo || {}).find((v) => v.revisitCount >= 2);
-    if (topRewatched) {
-      observations.push({
-        quote: `"You revisited '${topRewatched.title.slice(0, 32)}...' ${topRewatched.revisitCount + 1} times. Apparently it mattered."`,
-        sub: "OBSESSIVE LOOP DETECTED"
-      });
-    }
-
-    // Observation 4: Quick rejection commentary
-    const rejected = patterns?.find((p) => p.type === "INSTANT_REJECTION");
-    if (rejected) {
-      observations.push({
-        quote: `"${rejected.topic} survived an average of approximately 1.8 seconds before being rejected."`,
-        sub: "INSTANT DISMISSAL RATE"
-      });
-    } else if (summary.instantSkipCount >= 3) {
-      observations.push({
-        quote: `"You discarded ${summary.instantSkipCount} Shorts in under 2 seconds. Zero patience threshold detected."`,
-        sub: "INSTANT SKIP VELOCITY"
-      });
-    }
-
-    // Observation 5: Gravity commentary
-    const gravity = patterns?.find((p) => p.type === "TOPIC_GRAVITY");
-    if (gravity) {
-      observations.push({
-        quote: `"${gravity.topic} kept pulling you back across the session like an inescapable gravitational field."`,
-        sub: "ATTENTION GRAVITY WELL"
-      });
-    }
-
-    // Fallback observation if brief session
-    if (observations.length === 0) {
-      observations.push({
-        quote: `"Session telemetry gathered across ${totalViews} Shorts. Continue scrolling to uncover deeper attention sinks."`,
-        sub: "PRELIMINARY DOSSIER"
-      });
-    }
-
-    observations.forEach((obs) => {
-      const bubble = document.createElement("div");
-      bubble.className = "observation-bubble";
-      bubble.innerHTML = `
-        <div class="obs-quote">${escapeHtml(obs.quote)}</div>
-        <div class="obs-sub">${escapeHtml(obs.sub)}</div>
-      `;
-      observationsList.appendChild(bubble);
-    });
   }
 
   function renderEmptyDossier() {
