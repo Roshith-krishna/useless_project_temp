@@ -23,7 +23,7 @@ const TOPIC_PALETTE = {
   "Physics": { border: "#4361ee", fill: "rgba(67, 97, 238, 0.25)", text: "#9fb0ff", emoji: "⚛️" },
   "Technology": { border: "#7209b7", fill: "rgba(114, 9, 183, 0.25)", text: "#d18cff", emoji: "💻" },
   "Software": { border: "#560bad", fill: "rgba(86, 11, 173, 0.25)", text: "#b97bff", emoji: "⚙️" },
-  "Gaming": { border: "#b5179e", fill: "rgba(181, 23, 158, 0.25)", text: "#f279e0", emoji: "🎮" },
+  "Gaming": { border: "#b5179e", fill: "rgba(181, 23, 158, 0.25)", text: "#f279e0", emoji: "�" },
   "Finance": { border: "#2a9d8f", fill: "rgba(42, 157, 143, 0.25)", text: "#84e6d9", emoji: "📈" },
   "Crypto": { border: "#e76f51", fill: "rgba(231, 111, 81, 0.25)", text: "#ffab94", emoji: "🪙" },
   "Comedy": { border: "#ffd166", fill: "rgba(255, 209, 102, 0.25)", text: "#fff0a3", emoji: "😂" },
@@ -53,6 +53,7 @@ class ContentTrailVisualizer {
     this.hoveredNode = null;
     this.selectedNode = null;
     this.animFrame = null;
+    this.animationStart = 0;
 
     this.setupListeners();
   }
@@ -61,37 +62,46 @@ class ContentTrailVisualizer {
     this.canvas.addEventListener("mousemove", (e) => this.handleMouseMove(e));
     this.canvas.addEventListener("mouseleave", () => this.handleMouseLeave());
     this.canvas.addEventListener("click", (e) => this.handleClick(e));
-    window.addEventListener("resize", () => this.render());
+    window.addEventListener("resize", () => {
+      this.layoutNodes();
+      this.animationStart = performance.now();
+      this.animate();
+    });
   }
 
   loadData(views, patterns = []) {
     this.views = views || [];
     this.patterns = patterns || [];
     this.layoutNodes();
-    this.render();
+    this.animationStart = performance.now();
+    this.animate();
   }
 
   layoutNodes() {
-    if (!this.views || this.views.length === 0) return;
+    if (!this.views || this.views.length === 0) {
+      this.setCanvasSize(900, 480);
+      this.nodes = [];
+      this.revisitArcs = [];
+      return;
+    }
 
     // Set canvas dimensions
     const container = this.canvas.parentElement;
     const width = container ? container.clientWidth : 900;
-    const height = 480;
-    this.canvas.width = width * window.devicePixelRatio;
-    this.canvas.height = height * window.devicePixelRatio;
-    this.canvas.style.width = `${width}px`;
-    this.canvas.style.height = `${height}px`;
-    this.ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
-
-    this.nodes = [];
-    this.revisitArcs = [];
-
     const paddingX = 70;
     const availableWidth = width - paddingX * 2;
     const count = this.views.length;
-    const stepX = count > 1 ? availableWidth / (count - 1) : 0;
-    const centerY = height / 2;
+    const columns = Math.max(3, Math.floor(availableWidth / 115));
+    const rowHeight = 148;
+    const topPadding = 92;
+    const bottomPadding = 56;
+    const rows = Math.ceil(count / columns);
+    const height = topPadding + rows * rowHeight + bottomPadding;
+    const stepX = columns > 1 ? availableWidth / (columns - 1) : 0;
+
+    this.setCanvasSize(width, height);
+    this.nodes = [];
+    this.revisitArcs = [];
 
     // Track previously visited video IDs to calculate revisit arcs
     const videoFirstNodeIndex = {};
@@ -116,10 +126,14 @@ class ContentTrailVisualizer {
         radius = 20; // Moderate view
       }
 
-      // Sine wave undulating trail path
-      const yOffset = Math.sin((index / Math.max(1, count)) * Math.PI * 3) * 60;
-      const x = count === 1 ? width / 2 : paddingX + index * stepX;
-      const y = centerY + yOffset;
+      // Serpentine rows keep chronological neighbors readable and let long trails grow downward.
+      const row = Math.floor(index / columns);
+      const column = index % columns;
+      const itemsInRow = Math.min(columns, count - row * columns);
+      const rowStepX = itemsInRow > 1 ? availableWidth / (itemsInRow - 1) : 0;
+      const visualColumn = row % 2 === 0 ? column : itemsInRow - column - 1;
+      const x = itemsInRow === 1 ? width / 2 : paddingX + visualColumn * rowStepX;
+      const y = topPadding + row * rowHeight;
 
       const node = {
         index: index,
@@ -131,7 +145,8 @@ class ContentTrailVisualizer {
         theme: theme,
         isInstantSkip: ev.isInstantSkip || watchSec < 2,
         isRevisit: ev.isRevisit,
-        pulseOffset: Math.random() * Math.PI * 2
+        pulseOffset: Math.random() * Math.PI * 2,
+        revealDelay: index * 45
       };
 
       this.nodes.push(node);
@@ -151,7 +166,29 @@ class ContentTrailVisualizer {
     });
   }
 
-  render() {
+  setCanvasSize(width, height) {
+    const pixelRatio = window.devicePixelRatio || 1;
+    this.canvas.width = width * pixelRatio;
+    this.canvas.height = height * pixelRatio;
+    this.canvas.style.width = `${width}px`;
+    this.canvas.style.height = `${height}px`;
+    this.ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+  }
+
+  animate() {
+    if (this.animFrame) cancelAnimationFrame(this.animFrame);
+    const tick = (now) => {
+      this.render(now);
+      if (now - this.animationStart < 1800) {
+        this.animFrame = requestAnimationFrame(tick);
+      } else {
+        this.animFrame = null;
+      }
+    };
+    this.animFrame = requestAnimationFrame(tick);
+  }
+
+  render(now = performance.now()) {
     const width = this.canvas.width / window.devicePixelRatio;
     const height = this.canvas.height / window.devicePixelRatio;
     const ctx = this.ctx;
@@ -163,18 +200,21 @@ class ContentTrailVisualizer {
       return;
     }
 
+    const elapsed = Math.max(0, now - this.animationStart);
+    const visibleNodes = this.nodes.filter((node) => elapsed >= node.revealDelay);
+
     // 1. Draw connecting timeline baseline between sequential nodes
     ctx.beginPath();
     ctx.lineWidth = 3;
     ctx.strokeStyle = "rgba(139, 146, 176, 0.25)";
     ctx.setLineDash([4, 4]);
 
-    for (let i = 0; i < this.nodes.length; i++) {
-      const node = this.nodes[i];
+    for (let i = 0; i < visibleNodes.length; i++) {
+      const node = visibleNodes[i];
       if (i === 0) {
         ctx.moveTo(node.x, node.y);
       } else {
-        const prev = this.nodes[i - 1];
+        const prev = visibleNodes[i - 1];
         const cpX = (prev.x + node.x) / 2;
         ctx.quadraticCurveTo(cpX, prev.y, node.x, node.y);
       }
@@ -186,7 +226,7 @@ class ContentTrailVisualizer {
     this.revisitArcs.forEach((arc) => {
       const source = this.nodes[arc.sourceIndex];
       const target = this.nodes[arc.targetIndex];
-      if (!source || !target) return;
+      if (!source || !target || elapsed < target.revealDelay) return;
 
       ctx.beginPath();
       ctx.lineWidth = 2.5;
@@ -221,20 +261,22 @@ class ContentTrailVisualizer {
 
     // 3. Draw Nodes
     this.nodes.forEach((node, idx) => {
+      if (elapsed < node.revealDelay) return;
       const isHovered = this.hoveredNode === node;
       const isSelected = this.selectedNode === node;
+      const pulse = isHovered || isSelected ? Math.sin(now / 180 + node.pulseOffset) * 2 : 0;
 
       // Outer glow for sustained/engaging nodes
       if (node.radius >= 26 || isHovered) {
         ctx.beginPath();
-        ctx.arc(node.x, node.y, node.radius + 6, 0, Math.PI * 2);
+        ctx.arc(node.x, node.y, node.radius + 6 + pulse, 0, Math.PI * 2);
         ctx.fillStyle = node.theme.fill;
         ctx.fill();
       }
 
       // Base Node Circle
       ctx.beginPath();
-      ctx.arc(node.x, node.y, node.radius, 0, Math.PI * 2);
+      ctx.arc(node.x, node.y, node.radius + pulse, 0, Math.PI * 2);
       ctx.fillStyle = node.isInstantSkip ? "rgba(30, 33, 48, 0.85)" : node.theme.fill;
       ctx.fill();
 
