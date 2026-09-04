@@ -360,6 +360,10 @@ class ContentTrailVisualizer {
       if (typeof this.onNodeClick === "function") {
         this.onNodeClick(this.hoveredNode.view);
       }
+      const targetUrl = this.hoveredNode.view?.url || (this.hoveredNode.view?.videoId ? `https://www.youtube.com/shorts/${this.hoveredNode.view.videoId}` : null);
+      if (targetUrl) {
+        window.open(targetUrl, "_blank", "noopener,noreferrer");
+      }
     }
   }
 
@@ -369,25 +373,41 @@ class ContentTrailVisualizer {
     const watchSec = ((ev.watchDurationMs || 0) / 1000).toFixed(1);
     const videoSec = ev.videoDurationMs ? `${(ev.videoDurationMs / 1000).toFixed(1)}s` : "Unknown";
     const compPercent = ev.completionRate !== null ? `${Math.round(ev.completionRate * 100)}%` : "N/A";
-    const snapshot = ev.content?.visualContext?.snapshots?.[0];
+    
+    let thumbSrc = null;
+    const snapshots = ev.content?.visualContext?.snapshots;
+    if (Array.isArray(snapshots) && snapshots.length > 0 && snapshots[0]) {
+      thumbSrc = snapshots[0];
+    } else if (ev.videoId) {
+      thumbSrc = `https://i.ytimg.com/vi/${ev.videoId}/hqdefault.jpg`;
+    }
+
+    let thumbHtml = "";
+    if (thumbSrc) {
+      thumbHtml = `
+        <div class="trail-tt-thumb">
+          <img src="${this.escapeHtml(thumbSrc)}" alt="Thumbnail" loading="lazy" onerror="this.parentElement.style.display='none';" />
+        </div>
+      `;
+    }
 
     let html = `
       <div class="trail-tt-header" style="border-left: 3px solid ${node.theme.border};">
         <div class="trail-tt-badge">${node.theme.emoji} ${node.topic} &bull; Step #${node.index + 1}</div>
         <div class="trail-tt-title">${this.escapeHtml(ev.title || "YouTube Short")}</div>
       </div>
+      ${thumbHtml}
       <div class="trail-tt-stats">
         <div class="trail-tt-stat"><span>Watch:</span> <strong>${watchSec}s</strong></div>
         <div class="trail-tt-stat"><span>Length:</span> <strong>${videoSec}</strong></div>
         <div class="trail-tt-stat"><span>Completion:</span> <strong>${compPercent}</strong></div>
-        ${node.isRevisit ? '<div class="trail-tt-stat highlight"><strong>🔄 Revisit</strong></div>' : ''}
+        ${node.isRevisit ? '<div class="trail-tt-stat highlight"><strong>↻ Revisit</strong></div>' : ''}
         ${node.isInstantSkip ? '<div class="trail-tt-stat danger"><strong>⚡ Instant Skip</strong></div>' : ''}
       </div>
+      <div class="trail-tt-action">
+        <span class="tt-click-hint">▶ Click node to open Short</span>
+      </div>
     `;
-
-    if (snapshot) {
-      html += `<div class="trail-tt-thumb"><img src="${snapshot}" alt="Thumbnail" /></div>`;
-    }
 
     this.tooltip.innerHTML = html;
     this.tooltip.classList.remove("hidden");

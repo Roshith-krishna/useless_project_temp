@@ -454,17 +454,19 @@ body {
 .trail-tooltip {
   position: fixed;
   z-index: 1000;
-  width: 260px;
-  background: #151826;
-  border: 1px solid #2e354e;
+  width: 280px;
+  background: #141722;
+  border: 1px solid rgba(134, 184, 194, 0.35);
   border-radius: 8px;
   padding: 12px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.7);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.85);
   pointer-events: none;
   font-size: 12px;
   display: flex;
   flex-direction: column;
   gap: 8px;
+  backdrop-filter: blur(8px);
+  transition: opacity 0.15s ease;
 }
 
 .trail-tt-badge {
@@ -478,7 +480,30 @@ body {
   font-size: 12px;
   font-weight: 600;
   color: var(--text-main);
-  line-height: 1.3;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.trail-tt-thumb {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #090b0e;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.trail-tt-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .trail-tt-stats {
@@ -489,10 +514,21 @@ body {
   color: var(--text-muted);
 }
 
-.trail-tt-thumb img {
-  width: 100%;
-  border-radius: 4px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+.trail-tt-action {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 6px;
+  margin-top: 2px;
+}
+
+.tt-click-hint {
+  font-family: monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: var(--accent-cyan);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 /* Findings Grids */

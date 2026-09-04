@@ -84,7 +84,13 @@ document.addEventListener("DOMContentLoaded", () => {
         cell.textContent = marker;
         cell.addEventListener("mouseenter", (event) => showHeatmapTooltip(cell, view, viewTopic, index, event));
         cell.addEventListener("mouseleave", hideHeatmapTooltip);
-        cell.addEventListener("click", () => cell.classList.toggle("selected"));
+        cell.addEventListener("click", () => {
+          cell.classList.add("selected");
+          const targetUrl = view.url || (view.videoId ? `https://www.youtube.com/shorts/${view.videoId}` : null);
+          if (targetUrl) {
+            window.open(targetUrl, "_blank", "noopener,noreferrer");
+          }
+        });
         grid.appendChild(cell);
       });
     });
@@ -96,10 +102,64 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!tooltipEl) return;
     const watchSeconds = ((view.watchDurationMs || 0) / 1000).toFixed(1);
     const completion = `${Math.round((view.completionRate || 0) * 100)}%`;
-    tooltipEl.innerHTML = `<div class="trail-tt-header"><div class="trail-tt-badge">Step #${index + 1} &bull; ${escapeHtml(topic)}</div><div class="trail-tt-title">${escapeHtml(view.title || "YouTube Short")}</div></div><div class="trail-tt-stats"><div class="trail-tt-stat"><span>Watch:</span> <strong>${watchSeconds}s</strong></div><div class="trail-tt-stat"><span>Completion:</span> <strong>${completion}</strong></div></div>`;
+    const targetUrl = view.url || (view.videoId ? `https://www.youtube.com/shorts/${view.videoId}` : null);
+    
+    // Check for captured video snapshot, or YouTube thumbnail URL fallback
+    let thumbSrc = null;
+    const snapshots = view.content?.visualContext?.snapshots;
+    if (Array.isArray(snapshots) && snapshots.length > 0 && snapshots[0]) {
+      thumbSrc = snapshots[0];
+    } else if (view.videoId) {
+      thumbSrc = `https://i.ytimg.com/vi/${view.videoId}/hqdefault.jpg`;
+    }
+
+    let thumbHtml = "";
+    if (thumbSrc) {
+      thumbHtml = `
+        <div class="trail-tt-thumb">
+          <img src="${escapeHtml(thumbSrc)}" alt="Short thumbnail" loading="lazy" onerror="this.parentElement.style.display='none';" />
+        </div>
+      `;
+    }
+
+    tooltipEl.innerHTML = `
+      <div class="trail-tt-header">
+        <div class="trail-tt-badge">Step #${index + 1} &bull; ${escapeHtml(topic)}</div>
+        <div class="trail-tt-title">${escapeHtml(view.title || "YouTube Short")}</div>
+      </div>
+      ${thumbHtml}
+      <div class="trail-tt-stats">
+        <div class="trail-tt-stat"><span>Watch:</span> <strong>${watchSeconds}s</strong></div>
+        <div class="trail-tt-stat"><span>Completion:</span> <strong>${completion}</strong></div>
+        ${view.isRevisit ? '<div class="trail-tt-stat highlight"><strong>↻ Revisit</strong></div>' : ''}
+        ${view.isInstantSkip || watchSeconds < 2 ? '<div class="trail-tt-stat danger"><strong>⚡ Instant Skip</strong></div>' : ''}
+      </div>
+      <div class="trail-tt-action">
+        <span class="tt-click-hint">▶ Click cell to open Short</span>
+      </div>
+    `;
     tooltipEl.classList.remove("hidden");
-    tooltipEl.style.left = `${event.clientX + 16}px`;
-    tooltipEl.style.top = `${event.clientY + 16}px`;
+    positionTooltip(event.clientX, event.clientY);
+  }
+
+  function positionTooltip(clientX, clientY) {
+    if (!tooltipEl) return;
+    const offset = 14;
+    let x = clientX + offset;
+    let y = clientY + offset;
+
+    const ttWidth = 280;
+    const ttHeight = 240;
+
+    if (x + ttWidth > window.innerWidth) {
+      x = Math.max(10, clientX - ttWidth - offset);
+    }
+    if (y + ttHeight > window.innerHeight) {
+      y = Math.max(10, clientY - ttHeight - offset);
+    }
+
+    tooltipEl.style.left = `${x}px`;
+    tooltipEl.style.top = `${y}px`;
   }
 
   function hideHeatmapTooltip() {
