@@ -49,14 +49,14 @@ For Software:
 For Software:
 
 # Screenshots
-![The main "Doomscroll Autopsy" dashboard interface, featuring a summary of overall session metrics](screenshots\autopsy_overview.png)
-*Add caption explaining what this shows*
+![The main "Doomscroll Autopsy" dashboard interface, featuring a summary of overall session metrics](./screenshots\autopsy_overview.png)
+*The main "Doomscroll Autopsy" dashboard interface, featuring a summary of overall session metrics*
 
-![The detailed analysis section of the Scrollopsy dashboard](screenshots\retention.png)
-*Add caption explaining what this shows*
+![The detailed analysis section of the Scrollopsy dashboard](./screenshots\retention.png)
+*The detailed analysis section of the Scrollopsy dashboard*
 
-![The Scrollopsy browser extension popup, displaying the active Session Behavioral Inspector with real-time statistics like total views, instant skips, and average watch duration, alongside the button to launch the full autopsy.](screenshots\pop_up.png)
-*Add caption explaining what this shows*
+![The Scrollopsy browser extension popup, displaying the active Session Behavioral Inspector with real-time statistics like total views, instant skips, and average watch duration, alongside the button to launch the full autopsy.](./screenshots\pop_up.png)
+*The Scrollopsy browser extension popup, displaying the active Session Behavioral Inspector with real-time statistics like total views, instant skips, and average watch duration, alongside the button to launch the full autopsy.*
 
 ---
 Made with ❤️ at TinkerHub Useless Projects 
