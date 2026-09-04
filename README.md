@@ -6,13 +6,12 @@
 
 
 ## Basic Details
-### Team Name: [Name]
+### Team Name: NOT NULL
 
 
 ### Team Members
-- Team Lead: [Name] - [College]
-- Member 2: [Name] - [College]
-- Member 3: [Name] - [College]
+- Member 1: Saivivek MV - College of Engineering Vadakara
+- Member 2: Roshith Krishna KM - College of Engineering Vadakara 
 
 ### Project Description
 Scrollopsy is a Chrome Extension that observes a user's YouTube Shorts scrolling session and creates an entertaining "autopsy" of their attention trajectory. It passively records viewing events, active watch durations, video completion rates, instant skips, and revisits.
@@ -31,13 +30,9 @@ For Software:
 - HTML5 & CSS3
 - Chrome DevTools
 
-For Hardware:
-- [List main components]
-- [List specifications]
-- [List tools required]
 
 ### Implementation
-For Software:
+
 # Installation
 1. Clone or download this repository.
 2. Open Google Chrome and go to `chrome://extensions`.
@@ -53,51 +48,15 @@ For Software:
 ### Project Documentation
 For Software:
 
-# Screenshots (Add at least 3)
-![Screenshot1](Add screenshot 1 here with proper name)
+# Screenshots
+![The main "Doomscroll Autopsy" dashboard interface, featuring a summary of overall session metrics](screenshots\autopsy_overview.png)
 *Add caption explaining what this shows*
 
-![Screenshot2](Add screenshot 2 here with proper name)
+![The detailed analysis section of the Scrollopsy dashboard](screenshots\retention.png)
 *Add caption explaining what this shows*
 
-![Screenshot3](Add screenshot 3 here with proper name)
+![The Scrollopsy browser extension popup, displaying the active Session Behavioral Inspector with real-time statistics like total views, instant skips, and average watch duration, alongside the button to launch the full autopsy.](screenshots\pop_up.png)
 *Add caption explaining what this shows*
-
-# Diagrams
-![Workflow](Add your workflow/architecture diagram here)
-*Add caption explaining your workflow*
-
-For Hardware:
-
-# Schematic & Circuit
-![Circuit](Add your circuit diagram here)
-*Add caption explaining connections*
-
-![Schematic](Add your schematic diagram here)
-*Add caption explaining the schematic*
-
-# Build Photos
-![Components](Add photo of your components here)
-*List out all components shown*
-
-![Build](Add photos of build process here)
-*Explain the build steps*
-
-![Final](Add photo of final product here)
-*Explain the final build*
-
-### Project Demo
-# Video
-[Add your demo video link here]
-*Explain what the video demonstrates*
-
-# Additional Demos
-[Add any extra demo materials/links]
-
-## Team Contributions
-- [Name 1]: [Specific contributions]
-- [Name 2]: [Specific contributions]
-- [Name 3]: [Specific contributions]
 
 ---
 Made with ❤️ at TinkerHub Useless Projects 
