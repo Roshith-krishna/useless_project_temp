@@ -1,9 +1,8 @@
 /**
  * Scrollopsy - Semantic Representation Layer (Phase 7)
  * 
- * Generates structured semantic fingerprints for YouTube Shorts.
- * Supports Gemini API (when API key is provided) with a robust, zero-dependency
- * local taxonomy & keyword NLP engine as default / fallback.
+ * Generates structured semantic fingerprints for YouTube Shorts using
+ * a robust, zero-dependency local taxonomy & keyword NLP engine.
  * Caches fingerprints by videoId.
  */
 
@@ -159,63 +158,11 @@ function analyzeSemanticsLocally(contentObj) {
 }
 
 /**
- * Calls Gemini API if an API key is provided, falling back to local NLP.
+ * Generates semantic fingerprint using the local taxonomy and keyword analyzer.
  * @param {Object} contentObj - Normalized content object
- * @param {string} apiKey - Optional Gemini API Key
- * @returns {Promise<Object>} Semantic fingerprint
+ * @returns {Object} Semantic fingerprint
  */
-async function generateSemanticFingerprint(contentObj, apiKey = null) {
-  // If no API key is provided, use local semantic analysis immediately
-  if (!apiKey || typeof apiKey !== "string" || apiKey.trim() === "") {
-    return analyzeSemanticsLocally(contentObj);
-  }
-
-  try {
-    const prompt = `Analyze this YouTube Short metadata and return ONLY valid JSON:
-Title: "${contentObj.title}"
-Channel: "${contentObj.channel}"
-Description: "${contentObj.description}"
-Hashtags: ${JSON.stringify(contentObj.hashtags)}
-Visible Context: "${contentObj.visibleText}"
-
-Return JSON matching this exact structure:
-{
-  "summary": "1-2 sentence description of what this Short is actually about",
-  "topics": ["specific topic 1", "specific topic 2"],
-  "subtopics": ["narrow subtopic 1"],
-  "entities": ["entity names if any"],
-  "keywords": ["keyword1", "keyword2", "keyword3"],
-  "contentType": "category/type"
-}`;
-
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey.trim()}`;
-    const payload = {
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { responseMimeType: "application/json" }
-    };
-
-    const res = await fetch(endpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
-
-    if (!res.ok) {
-      console.warn(`[SCROLLOPSY] Gemini API responded with ${res.status}, using local NLP.`);
-      return analyzeSemanticsLocally(contentObj);
-    }
-
-    const data = await res.json();
-    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (rawText) {
-      const parsed = JSON.parse(rawText);
-      parsed.source = "gemini-api";
-      return parsed;
-    }
-  } catch (err) {
-    console.warn("[SCROLLOPSY] AI Semantic extraction error, falling back to local:", err);
-  }
-
+function generateSemanticFingerprint(contentObj) {
   return analyzeSemanticsLocally(contentObj);
 }
 
@@ -232,14 +179,13 @@ async function getOrComputeSemanticFingerprint(contentObj) {
   const cacheKey = `semanticCache_${contentObj.videoId}`;
 
   return new Promise((resolve) => {
-    chrome.storage.local.get([cacheKey, "geminiApiKey"], async (res) => {
+    chrome.storage.local.get([cacheKey], (res) => {
       if (res[cacheKey]) {
         resolve(res[cacheKey]);
         return;
       }
 
-      const apiKey = res.geminiApiKey || null;
-      const fingerprint = await generateSemanticFingerprint(contentObj, apiKey);
+      const fingerprint = analyzeSemanticsLocally(contentObj);
 
       // Save to cache
       chrome.storage.local.set({ [cacheKey]: fingerprint });

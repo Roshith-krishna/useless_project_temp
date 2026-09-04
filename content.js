@@ -305,18 +305,7 @@ function closeActiveViewingEvent(reason = "navigation") {
     }
   }
 
-  // Trigger optional async AI / cached semantic enrichment
-  if (contentData && typeof getOrComputeSemanticFingerprint === "function") {
-    getOrComputeSemanticFingerprint(contentData).then((fp) => {
-      if (fp && activeSession && Array.isArray(activeSession.views)) {
-        const ev = activeSession.views.find((v) => v.id === viewId);
-        if (ev && fp.source !== "local-nlp") {
-          ev.semantics = fp;
-          persistSession();
-        }
-      }
-    }).catch(() => {});
-  }
+
 
   const closedData = {
     id: viewId,

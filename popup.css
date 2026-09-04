@@ -305,39 +305,7 @@ header {
   box-shadow: 0 4px 12px rgba(134, 184, 194, 0.22);
 }
 
-.api-settings-drawer {
-  font-size: 11px;
-  color: var(--text-muted);
-  border-top: 1px solid var(--card-border);
-  padding-top: 8px;
-}
 
-.api-settings-drawer summary {
-  cursor: pointer;
-  user-select: none;
-  font-weight: 600;
-}
-
-.api-drawer-content {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-top: 8px;
-}
-
-.api-drawer-content input {
-  background: #101318;
-  border: 1px solid var(--card-border);
-  color: var(--text-main);
-  padding: 6px 8px;
-  border-radius: 4px;
-  font-size: 11px;
-}
-
-.api-key-status {
-  font-size: 10px;
-  color: var(--accent-cyan);
-}
 
 footer {
   font-size: 11px;
